@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 const GRID_SIZE = 20;
 const CELL_SIZE = 20;
@@ -11,6 +11,9 @@ export default function SnakeGame() {
   const [direction, setDirection] = useState([1, 0]);
   const [gameOver, setGameOver] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  
+  // Store direction to prevent movement during pause
+  const directionRef = useRef(direction);
 
   const score = snake.length - 1;
 
@@ -20,32 +23,42 @@ export default function SnakeGame() {
     setDirection([1, 0]);
     setGameOver(false);
     setIsPaused(false);
+    directionRef.current = [1, 0];
+  };
+
+  const togglePause = () => {
+    if (!gameOver) {
+      setIsPaused(!isPaused);
+    }
   };
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Spacebar Pause / Resume
-      if (e.code === "Space") {
-        setIsPaused((prev) => !prev);
+      // Prevent arrow keys from scrolling the page
+      if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+        e.preventDefault();
+      }
+
+      // Space key to toggle pause
+      if (e.key === " " || e.key === "Space") {
+        e.preventDefault();
+        togglePause();
         return;
       }
 
+      // Don't change direction if game is paused or over
       if (isPaused || gameOver) return;
 
       setDirection((prev) => {
         switch (e.key) {
           case "ArrowUp":
             return prev[1] === 1 ? prev : [0, -1];
-
           case "ArrowDown":
             return prev[1] === -1 ? prev : [0, 1];
-
           case "ArrowLeft":
             return prev[0] === 1 ? prev : [-1, 0];
-
           case "ArrowRight":
             return prev[0] === -1 ? prev : [1, 0];
-
           default:
             return prev;
         }
@@ -54,8 +67,7 @@ export default function SnakeGame() {
 
     window.addEventListener("keydown", handleKeyDown);
 
-    return () =>
-      window.removeEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isPaused, gameOver]);
 
   useEffect(() => {
@@ -64,7 +76,6 @@ export default function SnakeGame() {
     const interval = setInterval(() => {
       setSnake((prevSnake) => {
         const head = prevSnake[0];
-
         const newHead = [
           head[0] + direction[0],
           head[1] + direction[1],
@@ -84,8 +95,7 @@ export default function SnakeGame() {
         // Self collision
         const hitSelf = prevSnake.some(
           (segment) =>
-            segment[0] === newHead[0] &&
-            segment[1] === newHead[1]
+            segment[0] === newHead[0] && segment[1] === newHead[1]
         );
 
         if (hitSelf) {
@@ -96,12 +106,8 @@ export default function SnakeGame() {
         const newSnake = [newHead, ...prevSnake];
 
         // Food collision
-        if (
-          newHead[0] === food[0] &&
-          newHead[1] === food[1]
-        ) {
+        if (newHead[0] === food[0] && newHead[1] === food[1]) {
           let newFood;
-
           do {
             newFood = [
               Math.floor(Math.random() * GRID_SIZE),
@@ -110,11 +116,9 @@ export default function SnakeGame() {
           } while (
             newSnake.some(
               (segment) =>
-                segment[0] === newFood[0] &&
-                segment[1] === newFood[1]
+                segment[0] === newFood[0] && segment[1] === newFood[1]
             )
           );
-
           setFood(newFood);
         } else {
           newSnake.pop();
@@ -141,8 +145,7 @@ export default function SnakeGame() {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        background:
-          "linear-gradient(135deg,#0f172a,#1e293b,#020617)",
+        background: "linear-gradient(135deg,#0f172a,#1e293b,#020617)",
         color: "white",
       }}
     >
@@ -162,6 +165,7 @@ export default function SnakeGame() {
             justifyContent: "space-between",
             marginBottom: 20,
             alignItems: "center",
+            gap: 12,
           }}
         >
           <h1
@@ -174,13 +178,7 @@ export default function SnakeGame() {
             🐍 Snake Game
           </h1>
 
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              alignItems: "center",
-            }}
-          >
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             <div
               style={{
                 padding: "8px 14px",
@@ -192,65 +190,59 @@ export default function SnakeGame() {
               Score: {score}
             </div>
 
-            {!gameOver && (
-              <button
-                onClick={() => setIsPaused(!isPaused)}
-                style={{
-                  padding: "8px 14px",
-                  borderRadius: 12,
-                  border: "none",
-                  cursor: "pointer",
-                  background: isPaused
-                    ? "#22c55e"
-                    : "#f59e0b",
-                  color: "white",
-                  fontWeight: "bold",
-                }}
-              >
-                {isPaused ? "▶ Resume" : "⏸ Pause"}
-              </button>
-            )}
-          </div>
-        </div>
-
-        {gameOver && (
-          <div
-            style={{
-              textAlign: "center",
-              marginBottom: 15,
-            }}
-          >
-            <h2 style={{ color: "#ef4444" }}>
-              Game Over!
-            </h2>
+            <button
+              onClick={togglePause}
+              disabled={gameOver}
+              style={{
+                padding: "8px 16px",
+                borderRadius: 12,
+                border: "none",
+                cursor: gameOver ? "not-allowed" : "pointer",
+                background: isPaused ? "#f59e0b" : "#6366f1",
+                color: "white",
+                fontWeight: "bold",
+                opacity: gameOver ? 0.5 : 1,
+                transition: "all 0.2s",
+                minWidth: 70,
+              }}
+            >
+              {isPaused ? "▶ Play" : "⏸ Pause"}
+            </button>
 
             <button
               onClick={restartGame}
               style={{
-                padding: "10px 20px",
+                padding: "8px 16px",
                 borderRadius: 12,
                 border: "none",
                 cursor: "pointer",
-                background: "#3b82f6",
+                background: "#ef4444",
                 color: "white",
                 fontWeight: "bold",
               }}
             >
-              Restart
+              🔄 Restart
             </button>
           </div>
-        )}
+        </div>
 
-        {isPaused && !gameOver && (
+        {(gameOver || isPaused) && (
           <div
             style={{
               textAlign: "center",
               marginBottom: 15,
             }}
           >
-            <h2 style={{ color: "#f59e0b" }}>
-              ⏸ Game Paused
-            </h2>
+            {gameOver ? (
+              <>
+                <h2 style={{ color: "#ef4444" }}>Game Over!</h2>
+                <p style={{ opacity: 0.7, marginTop: -5 }}>
+                  Final Score: {score}
+                </p>
+              </>
+            ) : (
+              <h2 style={{ color: "#f59e0b" }}>⏸ Paused</h2>
+            )}
           </div>
         )}
 
@@ -280,14 +272,88 @@ export default function SnakeGame() {
                   index === 0
                     ? "linear-gradient(135deg,#4ade80,#22c55e)"
                     : "#16a34a",
-                boxShadow:
-                  "0 0 12px rgba(34,197,94,0.8)",
+                boxShadow: "0 0 12px rgba(34,197,94,0.8)",
                 left: segment[0] * CELL_SIZE,
                 top: segment[1] * CELL_SIZE,
+                overflow: "visible",
+                opacity: isPaused ? 0.5 : 1,
+                transition: "opacity 0.3s",
               }}
-            />
+            >
+              {index === 0 && (
+                <div
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    position: "relative",
+                    transform: getHeadRotation(),
+                  }}
+                >
+                  {/* Eyes */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      width: 3,
+                      height: 3,
+                      background: "#000",
+                      borderRadius: "50%",
+                      top: 4,
+                      left: 4,
+                    }}
+                  />
+                  <div
+                    style={{
+                      position: "absolute",
+                      width: 3,
+                      height: 3,
+                      background: "#000",
+                      borderRadius: "50%",
+                      top: 4,
+                      right: 4,
+                    }}
+                  />
+
+                  {/* Tongue */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      width: 2,
+                      height: 10,
+                      background: "red",
+                      left: "50%",
+                      top: -8,
+                      transform: "translateX(-50%)",
+                      borderRadius: 2,
+                    }}
+                  />
+                  <div
+                    style={{
+                      position: "absolute",
+                      width: 1,
+                      height: 4,
+                      background: "red",
+                      left: "calc(50% - 2px)",
+                      top: -11,
+                      transform: "rotate(-25deg)",
+                    }}
+                  />
+                  <div
+                    style={{
+                      position: "absolute",
+                      width: 1,
+                      height: 4,
+                      background: "red",
+                      left: "calc(50% + 1px)",
+                      top: -11,
+                      transform: "rotate(25deg)",
+                    }}
+                  />
+                </div>
+              )}
+            </div>
           ))}
 
+          {/* Food */}
           <div
             style={{
               position: "absolute",
@@ -295,12 +361,43 @@ export default function SnakeGame() {
               height: CELL_SIZE,
               borderRadius: "50%",
               background: "#ef4444",
-              boxShadow:
-                "0 0 20px rgba(239,68,68,0.9)",
+              boxShadow: "0 0 20px rgba(239,68,68,0.9)",
               left: food[0] * CELL_SIZE,
               top: food[1] * CELL_SIZE,
+              opacity: isPaused ? 0.5 : 1,
+              transition: "opacity 0.3s",
             }}
           />
+
+          {/* Pause Overlay */}
+          {isPaused && (
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                background: "rgba(0,0,0,0.6)",
+                backdropFilter: "blur(4px)",
+                zIndex: 10,
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "4rem",
+                  fontWeight: "bold",
+                  color: "white",
+                  textShadow: "0 0 30px rgba(0,0,0,0.8)",
+                }}
+              >
+                ⏸
+              </div>
+            </div>
+          )}
         </div>
 
         <p
@@ -308,10 +405,11 @@ export default function SnakeGame() {
             textAlign: "center",
             marginTop: 15,
             opacity: 0.7,
+            fontSize: "0.9rem",
           }}
         >
-          Use ↑ ↓ ← → keys to move • Press Space to
-          Pause/Resume
+          Use ↑ ↓ ← → to control • Press <strong>Space</strong> or click{" "}
+          <strong>Pause</strong> to toggle pause
         </p>
       </div>
     </div>
