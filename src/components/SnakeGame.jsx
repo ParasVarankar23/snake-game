@@ -8,9 +8,9 @@ const CELL_SIZE = 24;
 type Speed = "Slow" | "Normal" | "Fast" | "Turbo";
 
 export default function SnakeGame() {
-  const [snake, setSnake] = useState([[Math.floor(GRID_SIZE / 2), Math.floor(GRID_SIZE / 2)]]);
-  const [food, setFood] = useState([Math.floor(GRID_SIZE / 2) + 3, Math.floor(GRID_SIZE / 2)]);
-  const [direction, setDirection] = useState([1, 0]);
+  const [snake, setSnake] = useState<number[][]>([[Math.floor(GRID_SIZE / 2), Math.floor(GRID_SIZE / 2)]]);
+  const [food, setFood] = useState<number[]>([Math.floor(GRID_SIZE / 2) + 3, Math.floor(GRID_SIZE / 2)]);
+  const [direction, setDirection] = useState<number[]>([1, 0]);
   const [gameOver, setGameOver] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [speed, setSpeed] = useState<Speed>("Normal");
@@ -31,11 +31,11 @@ export default function SnakeGame() {
 
   // Update best score
   useEffect(() => {
-    if (score > bestScore && !gameOver) {
+    if (score > bestScore && !gameOver && !gameWon) {
       setBestScore(score);
       localStorage.setItem("snakeBestScore", String(score));
     }
-  }, [score, bestScore, gameOver]);
+  }, [score, bestScore, gameOver, gameWon]);
 
   const getSpeedDelay = () => {
     switch (speed) {
@@ -322,14 +322,6 @@ export default function SnakeGame() {
                 fontSize: "0.85rem",
                 transition: "all 0.2s",
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#dc2626";
-                e.currentTarget.style.transform = "scale(1.05)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "#ef4444";
-                e.currentTarget.style.transform = "scale(1)";
-              }}
             >
               🔄 Restart
             </button>
@@ -341,7 +333,6 @@ export default function SnakeGame() {
             style={{
               textAlign: "center",
               marginBottom: 15,
-              animation: "fadeIn 0.3s ease",
             }}
           >
             {gameOver && (
@@ -475,7 +466,6 @@ export default function SnakeGame() {
                       top: -10,
                       transform: "translateX(-50%)",
                       borderRadius: "0 0 2px 2px",
-                      animation: "tongue 0.3s ease-in-out infinite alternate",
                     }}
                   />
                   <div
@@ -488,7 +478,6 @@ export default function SnakeGame() {
                       top: -13,
                       transform: "rotate(-20deg)",
                       borderRadius: "0 0 2px 2px",
-                      animation: "tongue 0.3s ease-in-out infinite alternate",
                     }}
                   />
                   <div
@@ -501,7 +490,6 @@ export default function SnakeGame() {
                       top: -13,
                       transform: "rotate(20deg)",
                       borderRadius: "0 0 2px 2px",
-                      animation: "tongue 0.3s ease-in-out infinite alternate 0.05s",
                     }}
                   />
                 </div>
@@ -527,7 +515,6 @@ export default function SnakeGame() {
               top: food[1] * CELL_SIZE + 3,
               opacity: isPaused ? 0.5 : 1,
               transition: "opacity 0.3s",
-              animation: "foodPulse 1s ease-in-out infinite",
             }}
           >
             {/* Food shine effect */}
@@ -578,7 +565,6 @@ export default function SnakeGame() {
                   fontWeight: "bold",
                   color: "white",
                   textShadow: "0 0 40px rgba(0,0,0,0.9)",
-                  animation: "pulse 1.5s ease-in-out infinite",
                 }}
               >
                 ⏸
