@@ -5,6 +5,92 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 const GRID_SIZE = 25;
 const CELL_SIZE = 24;
 
+// Level configuration with animal themes and speed scaling
+const LEVEL_CONFIG = {
+  1: { 
+    stones: 0, 
+    speed: "Slow", 
+    label: "🌱 Level 1 - Snake",
+    nextLevelScore: 10,
+    color: "#22c55e",
+    speedMs: 300,
+    animal: "snake",
+    animalEmoji: "🐍",
+    animalName: "Snake",
+    speedMultiplier: 1
+  },
+  2: { 
+    stones: 3, 
+    speed: "Normal", 
+    label: "🌿 Level 2 - Cat",
+    nextLevelScore: 25,
+    color: "#f59e0b",
+    speedMs: 200,
+    animal: "cat",
+    animalEmoji: "🐱",
+    animalName: "Cat",
+    speedMultiplier: 1.5
+  },
+  3: { 
+    stones: 6, 
+    speed: "Fast", 
+    label: "🔥 Level 3 - Dog",
+    nextLevelScore: 45,
+    color: "#8b5cf6",
+    speedMs: 130,
+    animal: "dog",
+    animalEmoji: "🐶",
+    animalName: "Dog",
+    speedMultiplier: 2.3
+  },
+  4: { 
+    stones: 10, 
+    speed: "Turbo", 
+    label: "⚡ Level 4 - Fox",
+    nextLevelScore: 70,
+    color: "#f97316",
+    speedMs: 80,
+    animal: "fox",
+    animalEmoji: "🦊",
+    animalName: "Fox",
+    speedMultiplier: 3.75
+  },
+  5: { 
+    stones: 15, 
+    speed: "Turbo", 
+    label: "💀 Level 5 - Dragon",
+    nextLevelScore: 100,
+    color: "#ef4444",
+    speedMs: 50,
+    animal: "dragon",
+    animalEmoji: "🐉",
+    animalName: "Dragon",
+    speedMultiplier: 6
+  },
+  6: { 
+    stones: 20, 
+    speed: "Legend", 
+    label: "👑 Legend",
+    nextLevelScore: null,
+    color: "#8b5cf6",
+    speedMs: 30,
+    animal: "legend",
+    animalEmoji: "👑",
+    animalName: "Legend",
+    speedMultiplier: 10
+  },
+};
+
+// Animal theme colors
+const ANIMAL_COLORS = {
+  snake: { background: 'linear-gradient(135deg,#4ade80,#22c55e)', color: '#22c55e' },
+  cat: { background: 'linear-gradient(135deg,#fbbf24,#f59e0b)', color: '#f59e0b' },
+  dog: { background: 'linear-gradient(135deg,#a78bfa,#8b5cf6)', color: '#8b5cf6' },
+  fox: { background: 'linear-gradient(135deg,#fb923c,#f97316)', color: '#f97316' },
+  dragon: { background: 'linear-gradient(135deg,#f87171,#ef4444)', color: '#ef4444' },
+  legend: { background: 'linear-gradient(135deg,#facc15,#f59e0b)', color: '#f59e0b' },
+};
+
 export default function SnakeGame() {
   // Game State
   const [snake, setSnake] = useState([[Math.floor(GRID_SIZE / 2), Math.floor(GRID_SIZE / 2)]]);
@@ -12,7 +98,6 @@ export default function SnakeGame() {
   const [direction, setDirection] = useState([1, 0]);
   const [gameOver, setGameOver] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [speed, setSpeed] = useState("Normal");
   const [bestScore, setBestScore] = useState(0);
   const [gameWon, setGameWon] = useState(false);
   const [stones, setStones] = useState([]);
@@ -22,6 +107,8 @@ export default function SnakeGame() {
   const [unlockedLevels, setUnlockedLevels] = useState([1]);
   const [showLevelComplete, setShowLevelComplete] = useState(false);
   const [nextLevelScore, setNextLevelScore] = useState(10);
+  const [currentAnimal, setCurrentAnimal] = useState("snake");
+  const [currentSpeed, setCurrentSpeed] = useState(300);
 
   // Power-Ups
   const [powerUp, setPowerUp] = useState(null);
@@ -42,7 +129,6 @@ export default function SnakeGame() {
 
   // Theme
   const [theme, setTheme] = useState("dark");
-  const [snakeSkin, setSnakeSkin] = useState("classic");
   const [foodSkin, setFoodSkin] = useState("classic");
 
   // Touch Controls
@@ -58,7 +144,6 @@ export default function SnakeGame() {
   const audioContext = useRef(null);
 
   const directionRef = useRef(direction);
-  const totalBoxes = GRID_SIZE * GRID_SIZE;
   const gameLoopRef = useRef(null);
 
   // Responsive grid sizing
@@ -67,7 +152,6 @@ export default function SnakeGame() {
       const width = window.innerWidth;
       setWindowWidth(width);
       
-      // Adjust grid size based on screen width
       if (width < 400) {
         setGridSize(20);
         setCellSize(16);
@@ -88,63 +172,42 @@ export default function SnakeGame() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Level configuration based on score
+  // Get current level config
   const getLevelConfig = (score) => {
-    if (score < 10) {
-      return { 
-        level: 1, 
-        stones: 0, 
-        speed: "Slow", 
-        label: "🌱 Beginner",
-        nextLevelScore: 10,
-        color: "#22c55e"
-      };
-    } else if (score < 20) {
-      return { 
-        level: 2, 
-        stones: 3, 
-        speed: "Normal", 
-        label: "🌿 Easy",
-        nextLevelScore: 20,
-        color: "#84cc16"
-      };
-    } else if (score < 50) {
-      return { 
-        level: 3, 
-        stones: 6, 
-        speed: "Normal", 
-        label: "🔥 Medium",
-        nextLevelScore: 50,
-        color: "#f59e0b"
-      };
-    } else if (score < 75) {
-      return { 
-        level: 4, 
-        stones: 10, 
-        speed: "Fast", 
-        label: "⚡ Hard",
-        nextLevelScore: 75,
-        color: "#f97316"
-      };
-    } else if (score < 100) {
-      return { 
-        level: 5, 
-        stones: 15, 
-        speed: "Turbo", 
-        label: "💀 Expert",
-        nextLevelScore: 100,
-        color: "#ef4444"
-      };
-    } else {
-      return { 
-        level: 6, 
-        stones: 20, 
-        speed: "Turbo", 
-        label: "👑 Legend",
-        nextLevelScore: null,
-        color: "#8b5cf6"
-      };
-    }
+    if (score < 10) return LEVEL_CONFIG[1];
+    if (score < 25) return LEVEL_CONFIG[2];
+    if (score < 45) return LEVEL_CONFIG[3];
+    if (score < 70) return LEVEL_CONFIG[4];
+    if (score < 100) return LEVEL_CONFIG[5];
+    return LEVEL_CONFIG[6];
+  };
+
+  // Get animal emoji for current level
+  const getAnimalEmoji = () => {
+    const config = getLevelConfig(score);
+    return config.animalEmoji || "🐍";
+  };
+
+  const getAnimalName = () => {
+    const config = getLevelConfig(score);
+    return config.animalName || "Snake";
+  };
+
+  const getAnimalColor = () => {
+    const config = getLevelConfig(score);
+    return ANIMAL_COLORS[config.animal] || ANIMAL_COLORS.snake;
+  };
+
+  // Get speed display
+  const getSpeedDisplay = () => {
+    const config = getLevelConfig(score);
+    return config.speed || "Slow";
+  };
+
+  // Get speed multiplier display
+  const getSpeedMultiplier = () => {
+    const config = getLevelConfig(score);
+    return config.speedMultiplier || 1;
   };
 
   // Achievement definitions
@@ -152,11 +215,11 @@ export default function SnakeGame() {
     FIRST_BITE: { id: 'first_bite', name: 'First Bite', desc: 'Eat your first food', icon: '🍎', unlocked: false },
     SNAKE_CHARMER: { id: 'snake_charmer', name: 'Snake Charmer', desc: 'Reach length 10', icon: '🐍', unlocked: false },
     STONE_DODGER: { id: 'stone_dodger', name: 'Stone Dodger', desc: 'Avoid 10 stones', icon: '🪨', unlocked: false },
-    SPEED_DEMON: { id: 'speed_demon', name: 'Speed Demon', desc: 'Complete on Turbo', icon: '⚡', unlocked: false },
     MASTER_OF_SNAKE: { id: 'master_of_snake', name: 'Master of Snake', desc: 'Reach score 100', icon: '👑', unlocked: false },
-    PERFECT_SCORE: { id: 'perfect_score', name: 'Perfect Score', desc: 'Complete without losing', icon: '⭐', unlocked: false },
     POWER_USER: { id: 'power_user', name: 'Power User', desc: 'Collect 5 power-ups', icon: '💪', unlocked: false },
     LEVEL_MASTER: { id: 'level_master', name: 'Level Master', desc: 'Reach Level 6', icon: '🏆', unlocked: false },
+    ANIMAL_COLLECTOR: { id: 'animal_collector', name: 'Animal Collector', desc: 'Collect all animal themes', icon: '🐾', unlocked: false },
+    SPEED_DEMON: { id: 'speed_demon', name: 'Speed Demon', desc: 'Reach Level 6 speed', icon: '⚡', unlocked: false },
   };
 
   // Load progress
@@ -189,10 +252,6 @@ export default function SnakeGame() {
     const savedTheme = localStorage.getItem("snakeTheme");
     if (savedTheme) setTheme(savedTheme);
 
-    const savedSkin = localStorage.getItem("snakeSkin");
-    if (savedSkin) setSnakeSkin(savedSkin);
-
-    // Check if touch device
     if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
       setShowTouchControls(true);
     }
@@ -204,8 +263,7 @@ export default function SnakeGame() {
     localStorage.setItem("snakeAchievements", JSON.stringify(achievements));
     localStorage.setItem("snakeStats", JSON.stringify(stats));
     localStorage.setItem("snakeTheme", theme);
-    localStorage.setItem("snakeSkin", snakeSkin);
-  }, [unlockedLevels, achievements, stats, theme, snakeSkin]);
+  }, [unlockedLevels, achievements, stats, theme]);
 
   // Update best score
   useEffect(() => {
@@ -218,11 +276,18 @@ export default function SnakeGame() {
   // Update level based on score
   useEffect(() => {
     const config = getLevelConfig(score);
-    const newLevel = config.level;
+    const newLevel = config.level || 1;
+    const newSpeed = config.speedMs || 300;
     
     if (newLevel !== level && !gameOver) {
       setLevel(newLevel);
       setNextLevelScore(config.nextLevelScore);
+      setCurrentAnimal(config.animal);
+      setCurrentSpeed(newSpeed);
+      
+      if (newLevel === 6) {
+        checkAchievements('speed', {});
+      }
       
       if (!unlockedLevels.includes(newLevel)) {
         setUnlockedLevels(prev => [...prev, newLevel]);
@@ -235,6 +300,17 @@ export default function SnakeGame() {
         }));
         
         checkAchievements('level', { perfect: !gameOver });
+        
+        const animals = new Set();
+        unlockedLevels.forEach(lvl => {
+          if (LEVEL_CONFIG[lvl]) animals.add(LEVEL_CONFIG[lvl].animal);
+        });
+        if (unlockedLevels.includes(newLevel) && LEVEL_CONFIG[newLevel]) {
+          animals.add(LEVEL_CONFIG[newLevel].animal);
+        }
+        if (animals.size >= 5) {
+          checkAchievements('animal', {});
+        }
       }
       
       const center = Math.floor(gridSize / 2);
@@ -322,32 +398,41 @@ export default function SnakeGame() {
     } catch (e) {}
   }, []);
 
-  // Generate stones
+  // Generate stones - FIXED VERSION
   const generateStones = (snakePositions, foodPosition, currentLevel) => {
     const config = getLevelConfig(score);
-    const numStones = config.stones;
+    const numStones = config.stones || 0;
     const newStones = [];
-    let attempts = 0;
     
-    while (newStones.length < numStones && attempts < 2000) {
+    // If no stones needed, clear them
+    if (numStones === 0) {
+      setStones([]);
+      return;
+    }
+    
+    // Create a set of occupied positions
+    const occupied = new Set();
+    snakePositions.forEach(pos => occupied.add(`${pos[0]},${pos[1]}`));
+    occupied.add(`${foodPosition[0]},${foodPosition[1]}`);
+    
+    // Try to place stones
+    let attempts = 0;
+    const maxAttempts = 5000;
+    
+    while (newStones.length < numStones && attempts < maxAttempts) {
       attempts++;
       const stone = [
         Math.floor(Math.random() * gridSize),
         Math.floor(Math.random() * gridSize),
       ];
+      const key = `${stone[0]},${stone[1]}`;
       
-      const isOnSnake = snakePositions.some(
-        (seg) => seg[0] === stone[0] && seg[1] === stone[1]
-      );
-      const isOnFood = stone[0] === foodPosition[0] && stone[1] === foodPosition[1];
-      const isOnStone = newStones.some(
-        (s) => s[0] === stone[0] && s[1] === stone[1]
-      );
-      
-      if (!isOnSnake && !isOnFood && !isOnStone) {
+      if (!occupied.has(key)) {
         newStones.push(stone);
+        occupied.add(key);
       }
     }
+    
     setStones(newStones);
   };
 
@@ -360,6 +445,11 @@ export default function SnakeGame() {
     let position;
     let attempts = 0;
     
+    const occupied = new Set();
+    snakePos.forEach(pos => occupied.add(`${pos[0]},${pos[1]}`));
+    occupied.add(`${foodPos[0]},${foodPos[1]}`);
+    currentStones.forEach(stone => occupied.add(`${stone[0]},${stone[1]}`));
+    
     do {
       position = [
         Math.floor(Math.random() * gridSize),
@@ -367,27 +457,23 @@ export default function SnakeGame() {
       ];
       attempts++;
     } while (
-      (snakePos.some(seg => seg[0] === position[0] && seg[1] === position[1]) ||
-       (position[0] === foodPos[0] && position[1] === foodPos[1]) ||
-       currentStones.some(stone => stone[0] === position[0] && stone[1] === position[1])) &&
+      occupied.has(`${position[0]},${position[1]}`) &&
       attempts < 1000
     );
     
-    setPowerUp({ type, position, spawnTime: Date.now() });
+    if (!occupied.has(`${position[0]},${position[1]}`)) {
+      setPowerUp({ type, position, spawnTime: Date.now() });
+    }
   };
 
   const getSpeedDelay = () => {
     const config = getLevelConfig(score);
-    if (powerUpActive === 'speed') return 50;
-    if (powerUpActive === 'slow') return 300;
+    let baseSpeed = config.speedMs || 300;
     
-    switch (config.speed) {
-      case "Slow": return 250;
-      case "Normal": return 160;
-      case "Fast": return 100;
-      case "Turbo": return 60;
-      default: return 160;
-    }
+    if (powerUpActive === 'speed') return Math.max(20, baseSpeed * 0.3);
+    if (powerUpActive === 'slow') return Math.min(400, baseSpeed * 2);
+    
+    return baseSpeed;
   };
 
   // Check achievements
@@ -417,10 +503,6 @@ export default function SnakeGame() {
           newAchievements.push({ ...ACHIEVEMENTS.MASTER_OF_SNAKE, unlocked: true, unlockedAt: new Date().toISOString() });
           unlocked = true;
         }
-        if (data.perfect && !newAchievements.find(a => a.id === 'perfect_score')) {
-          newAchievements.push({ ...ACHIEVEMENTS.PERFECT_SCORE, unlocked: true, unlockedAt: new Date().toISOString() });
-          unlocked = true;
-        }
         if (level === 6 && !newAchievements.find(a => a.id === 'level_master')) {
           newAchievements.push({ ...ACHIEVEMENTS.LEVEL_MASTER, unlocked: true, unlockedAt: new Date().toISOString() });
           unlocked = true;
@@ -430,6 +512,18 @@ export default function SnakeGame() {
         const powerCount = newAchievements.filter(a => a.id === 'power_user').length;
         if (powerCount >= 5 && !newAchievements.find(a => a.id === 'power_user')) {
           newAchievements.push({ ...ACHIEVEMENTS.POWER_USER, unlocked: true, unlockedAt: new Date().toISOString() });
+          unlocked = true;
+        }
+        break;
+      case 'animal':
+        if (!newAchievements.find(a => a.id === 'animal_collector')) {
+          newAchievements.push({ ...ACHIEVEMENTS.ANIMAL_COLLECTOR, unlocked: true, unlockedAt: new Date().toISOString() });
+          unlocked = true;
+        }
+        break;
+      case 'speed':
+        if (!newAchievements.find(a => a.id === 'speed_demon')) {
+          newAchievements.push({ ...ACHIEVEMENTS.SPEED_DEMON, unlocked: true, unlockedAt: new Date().toISOString() });
           unlocked = true;
         }
         break;
@@ -459,6 +553,8 @@ export default function SnakeGame() {
     setScore(0);
     setLevel(1);
     setNextLevelScore(10);
+    setCurrentAnimal("snake");
+    setCurrentSpeed(300);
     setPowerUp(null);
     setPowerUpActive(null);
     setPowerUpTimer(0);
@@ -472,6 +568,11 @@ export default function SnakeGame() {
   const generateFood = (currentSnake, currentStones) => {
     let newFood;
     let attempts = 0;
+    const occupied = new Set();
+    currentSnake.forEach(seg => occupied.add(`${seg[0]},${seg[1]}`));
+    currentStones.forEach(stone => occupied.add(`${stone[0]},${stone[1]}`));
+    if (powerUp) occupied.add(`${powerUp.position[0]},${powerUp.position[1]}`);
+    
     do {
       newFood = [
         Math.floor(Math.random() * gridSize),
@@ -479,13 +580,7 @@ export default function SnakeGame() {
       ];
       attempts++;
     } while (
-      (currentSnake.some(
-        (segment) => segment[0] === newFood[0] && segment[1] === newFood[1]
-      ) ||
-      currentStones.some(
-        (stone) => stone[0] === newFood[0] && stone[1] === newFood[1]
-      ) ||
-      (powerUp && powerUp.position[0] === newFood[0] && powerUp.position[1] === newFood[1])) &&
+      occupied.has(`${newFood[0]},${newFood[1]}`) &&
       attempts < 1000
     );
     setFood(newFood);
@@ -666,26 +761,8 @@ export default function SnakeGame() {
   };
 
   const getLevelColor = (lvl) => {
-    switch(lvl) {
-      case 1: return "#22c55e";
-      case 2: return "#84cc16";
-      case 3: return "#f59e0b";
-      case 4: return "#f97316";
-      case 5: return "#ef4444";
-      case 6: return "#8b5cf6";
-      default: return "#22c55e";
-    }
-  };
-
-  const getSnakeColor = () => {
-    switch(snakeSkin) {
-      case 'neon': return 'linear-gradient(135deg,#8b5cf6,#ec4899)';
-      case 'gold': return 'linear-gradient(135deg,#fbbf24,#f59e0b)';
-      case 'fire': return 'linear-gradient(135deg,#f97316,#dc2626)';
-      case 'ice': return 'linear-gradient(135deg,#38bdf8,#0284c7)';
-      case 'galaxy': return 'linear-gradient(135deg,#6d28d9,#be185d)';
-      default: return 'linear-gradient(135deg,#4ade80,#22c55e)';
-    }
+    const config = LEVEL_CONFIG[lvl];
+    return config ? config.color : "#22c55e";
   };
 
   const getFoodEmoji = () => {
@@ -694,11 +771,13 @@ export default function SnakeGame() {
       case 'fruit': return '🍎';
       case 'star': return '⭐';
       case 'heart': return '❤️';
+      case 'fish': return '🐟';
       default: return '🍎';
     }
   };
 
   const config = getLevelConfig(score);
+  const animalColors = getAnimalColor();
 
   return (
     <div
@@ -733,7 +812,7 @@ export default function SnakeGame() {
           width: "100%",
         }}
       >
-        {/* Header */}
+        {/* Header - Same as before */}
         <div
           style={{
             display: "flex",
@@ -750,13 +829,13 @@ export default function SnakeGame() {
                 margin: 0,
                 fontSize: windowWidth < 500 ? "1.2rem" : windowWidth < 768 ? "1.5rem" : "2rem",
                 fontWeight: "800",
-                background: getSnakeColor(),
+                backgroundImage: animalColors.background,
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
                 backgroundClip: "text",
               }}
             >
-              🐍 Snake
+              {getAnimalEmoji()} {getAnimalName()}
             </h1>
             <button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
@@ -817,6 +896,19 @@ export default function SnakeGame() {
               Level {level}
             </div>
 
+            <div
+              style={{
+                padding: windowWidth < 500 ? "4px 8px" : "6px 14px",
+                borderRadius: 10,
+                background: "rgba(59,130,246,0.3)",
+                fontWeight: "bold",
+                border: "1px solid rgba(59,130,246,0.5)",
+                color: "#60a5fa",
+              }}
+            >
+              ⚡ {getSpeedDisplay()} (×{getSpeedMultiplier()})
+            </div>
+
             {nextLevelScore && (
               <div
                 style={{
@@ -853,50 +945,27 @@ export default function SnakeGame() {
             )}
 
             {windowWidth > 500 && (
-              <>
-                <select
-                  value={snakeSkin}
-                  onChange={(e) => setSnakeSkin(e.target.value)}
-                  style={{
-                    padding: "6px 12px",
-                    borderRadius: 10,
-                    border: "none",
-                    background: "#334155",
-                    color: "white",
-                    fontWeight: "bold",
-                    cursor: "pointer",
-                    fontSize: "0.85rem",
-                  }}
-                >
-                  <option value="classic">🐍 Classic</option>
-                  <option value="neon">💜 Neon</option>
-                  <option value="gold">✨ Gold</option>
-                  <option value="fire">🔥 Fire</option>
-                  <option value="ice">❄️ Ice</option>
-                  <option value="galaxy">🌌 Galaxy</option>
-                </select>
-
-                <select
-                  value={foodSkin}
-                  onChange={(e) => setFoodSkin(e.target.value)}
-                  style={{
-                    padding: "6px 12px",
-                    borderRadius: 10,
-                    border: "none",
-                    background: "#334155",
-                    color: "white",
-                    fontWeight: "bold",
-                    cursor: "pointer",
-                    fontSize: "0.85rem",
-                  }}
-                >
-                  <option value="classic">🍎 Classic</option>
-                  <option value="candy">🍬 Candy</option>
-                  <option value="fruit">🍎 Fruit</option>
-                  <option value="star">⭐ Star</option>
-                  <option value="heart">❤️ Heart</option>
-                </select>
-              </>
+              <select
+                value={foodSkin}
+                onChange={(e) => setFoodSkin(e.target.value)}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: 10,
+                  border: "none",
+                  background: "#334155",
+                  color: "white",
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                  fontSize: "0.85rem",
+                }}
+              >
+                <option value="classic">🍎 Classic</option>
+                <option value="candy">🍬 Candy</option>
+                <option value="fruit">🍎 Fruit</option>
+                <option value="star">⭐ Star</option>
+                <option value="heart">❤️ Heart</option>
+                <option value="fish">🐟 Fish</option>
+              </select>
             )}
 
             <button
@@ -957,6 +1026,7 @@ export default function SnakeGame() {
           </div>
         </div>
 
+        {/* Rest of the UI components remain the same */}
         {/* Achievement Notification */}
         {showAchievement && (
           <div
@@ -1025,14 +1095,26 @@ export default function SnakeGame() {
               </h2>
               
               <div style={{ marginBottom: 16, fontSize: windowWidth < 500 ? "0.85rem" : "1rem" }}>
-                <h3 style={{ color: "#f59e0b", fontSize: windowWidth < 500 ? "1rem" : "1.1rem" }}>🎯 Level System</h3>
+                <h3 style={{ color: "#f59e0b", fontSize: windowWidth < 500 ? "1rem" : "1.1rem" }}>🎯 Level System & Speed</h3>
                 <div style={{ opacity: 0.8 }}>
-                  <p><strong>Level 1:</strong> Score 0-9 • No stones • Slow</p>
-                  <p><strong>Level 2:</strong> Score 10-19 • 3 stones • Normal</p>
-                  <p><strong>Level 3:</strong> Score 20-49 • 6 stones • Normal</p>
-                  <p><strong>Level 4:</strong> Score 50-74 • 10 stones • Fast</p>
-                  <p><strong>Level 5:</strong> Score 75-99 • 15 stones • Turbo</p>
-                  <p><strong style={{ color: "#8b5cf6" }}>Level 6:</strong> Score 100+ • 20 stones • Legend</p>
+                  <p><strong>Level 1:</strong> 🐍 Snake • 0 stones • 🐢 Slow (×1)</p>
+                  <p><strong>Level 2:</strong> 🐱 Cat • 3 stones • 🚶 Normal (×1.5)</p>
+                  <p><strong>Level 3:</strong> 🐶 Dog • 6 stones • 🏃 Fast (×2.3)</p>
+                  <p><strong>Level 4:</strong> 🦊 Fox • 10 stones • 💨 Turbo (×3.75)</p>
+                  <p><strong>Level 5:</strong> 🐉 Dragon • 15 stones • ⚡ Turbo (×6)</p>
+                  <p><strong style={{ color: "#8b5cf6" }}>Level 6:</strong> 👑 Legend • 20 stones • 🚀 Legend (×10)</p>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 16, fontSize: windowWidth < 500 ? "0.85rem" : "1rem" }}>
+                <h3 style={{ color: "#f59e0b", fontSize: windowWidth < 500 ? "1rem" : "1.1rem" }}>🐾 Animal Themes</h3>
+                <div style={{ opacity: 0.8, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
+                  <p>🐍 Level 1: Snake</p>
+                  <p>🐱 Level 2: Cat</p>
+                  <p>🐶 Level 3: Dog</p>
+                  <p>🦊 Level 4: Fox</p>
+                  <p>🐉 Level 5: Dragon</p>
+                  <p>👑 Level 6: Legend</p>
                 </div>
               </div>
 
@@ -1044,15 +1126,6 @@ export default function SnakeGame() {
                   <p><strong>⚡ Speed:</strong> Double speed for 3s</p>
                   <p><strong>💫 Slow:</strong> Slow down time for 3s</p>
                 </div>
-              </div>
-
-              <div style={{ marginBottom: 16, fontSize: windowWidth < 500 ? "0.85rem" : "1rem" }}>
-                <h3 style={{ color: "#f59e0b", fontSize: windowWidth < 500 ? "1rem" : "1.1rem" }}>🎮 Controls</h3>
-                <ul style={{ opacity: 0.8, paddingLeft: 20 }}>
-                  <li>↑ ↓ ← → or WASD to move</li>
-                  <li>Space to pause</li>
-                  <li>Swipe on mobile</li>
-                </ul>
               </div>
 
               <button
@@ -1108,12 +1181,17 @@ export default function SnakeGame() {
                 boxShadow: "0 30px 60px rgba(0,0,0,0.5), 0 0 60px rgba(74, 222, 128, 0.1)",
               }}
             >
-              <div style={{ fontSize: windowWidth < 500 ? "3rem" : "4rem", marginBottom: 10 }}>🎉</div>
+              <div style={{ fontSize: windowWidth < 500 ? "3rem" : "4rem", marginBottom: 10 }}>
+                {getAnimalEmoji()}
+              </div>
               <h2 style={{ color: "#4ade80", margin: "10px 0", fontSize: windowWidth < 500 ? "1.5rem" : "2rem" }}>
-                Level {level} Complete!
+                {getAnimalName()} Level {level} Complete!
               </h2>
               <p style={{ opacity: 0.8, fontSize: windowWidth < 500 ? "0.9rem" : "1.1rem" }}>
                 Score: {score} | {config.label}
+              </p>
+              <p style={{ opacity: 0.6, fontSize: windowWidth < 500 ? "0.8rem" : "0.9rem" }}>
+                ⚡ Speed: {getSpeedDisplay()} (×{getSpeedMultiplier()})
               </p>
               
               {level < 6 && (
@@ -1125,10 +1203,10 @@ export default function SnakeGame() {
                   border: "1px solid rgba(74, 222, 128, 0.2)"
                 }}>
                   <p style={{ margin: 0, color: "#4ade80" }}>
-                    🔓 Next Level: {level + 1}
+                    🔓 Next Level: {level + 1} {LEVEL_CONFIG[level + 1]?.animalEmoji || ''}
                   </p>
                   <p style={{ margin: "4px 0 0 0", opacity: 0.6, fontSize: "0.9rem" }}>
-                    Need {nextLevelScore} points
+                    Need {nextLevelScore} points • Speed: {LEVEL_CONFIG[level + 1]?.speed || 'Normal'}
                   </p>
                 </div>
               )}
@@ -1143,6 +1221,9 @@ export default function SnakeGame() {
                 }}>
                   <p style={{ margin: 0, color: "#facc15", fontSize: "1.2rem" }}>
                     👑 You're a Snake Master!
+                  </p>
+                  <p style={{ margin: "4px 0 0 0", opacity: 0.6, fontSize: "0.9rem" }}>
+                    All animals collected! 🐾 • Max Speed: 🚀 Legend
                   </p>
                 </div>
               )}
@@ -1196,7 +1277,7 @@ export default function SnakeGame() {
             {gameWon && !showLevelComplete && (
               <>
                 <h2 style={{ color: "#4ade80", margin: 0, fontSize: windowWidth < 500 ? "1.2rem" : "1.8rem" }}>
-                  🎉 Level Complete!
+                  🎉 {getAnimalName()} Level Complete!
                 </h2>
                 <p style={{ opacity: 0.7, marginTop: 4, fontSize: windowWidth < 500 ? "0.8rem" : "0.9rem" }}>
                   Score: {score} | {config.label}
@@ -1238,12 +1319,11 @@ export default function SnakeGame() {
                 width: cellSize - 2,
                 height: cellSize - 2,
                 borderRadius: index === 0 ? Math.max(6, cellSize * 0.4) : Math.max(3, cellSize * 0.2),
-                background: index === 0 ? getSnakeColor() : 
-                  snakeSkin === 'neon' ? '#8b5cf6' :
-                  snakeSkin === 'gold' ? '#fbbf24' :
-                  snakeSkin === 'fire' ? '#f97316' :
-                  snakeSkin === 'ice' ? '#38bdf8' :
-                  snakeSkin === 'galaxy' ? '#6d28d9' :
+                background: index === 0 ? animalColors.background : 
+                  level === 2 ? '#f59e0b' :
+                  level === 3 ? '#8b5cf6' :
+                  level === 4 ? '#f97316' :
+                  level === 5 ? '#ef4444' :
                   `hsl(${140 + index * 0.5}, 70%, ${45 - index * 0.3}%)`,
                 boxShadow: index === 0
                   ? `0 0 ${cellSize}px ${powerUpActive === 'invincible' ? 'rgba(251,191,36,0.8)' : 'rgba(34,197,94,0.6)'}, inset 0 0 ${cellSize * 0.5}px rgba(255,255,255,0.2)`
@@ -1267,6 +1347,20 @@ export default function SnakeGame() {
                     transition: "transform 0.15s ease",
                   }}
                 >
+                  {/* Animal emoji on head */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "50%",
+                      left: "50%",
+                      transform: "translate(-50%, -50%)",
+                      fontSize: Math.max(8, cellSize * 0.5),
+                      lineHeight: 1,
+                    }}
+                  >
+                    {getAnimalEmoji()}
+                  </div>
+
                   {/* Eyes */}
                   <div
                     style={{
@@ -1368,7 +1462,7 @@ export default function SnakeGame() {
             </div>
           ))}
 
-          {/* Stones */}
+          {/* Stones - Now visible! */}
           {stones.map((stone, index) => (
             <div
               key={`stone-${index}`}
@@ -1381,13 +1475,15 @@ export default function SnakeGame() {
                 boxShadow: `
                   inset -${Math.max(2, cellSize * 0.12)}px -${Math.max(2, cellSize * 0.12)}px ${Math.max(4, cellSize * 0.2)}px rgba(0,0,0,0.6),
                   inset ${Math.max(2, cellSize * 0.12)}px ${Math.max(2, cellSize * 0.12)}px ${Math.max(4, cellSize * 0.2)}px rgba(255,255,255,0.1),
-                  0 ${Math.max(2, cellSize * 0.12)}px ${Math.max(8, cellSize * 0.4)}px rgba(0,0,0,0.4)
+                  0 ${Math.max(2, cellSize * 0.12)}px ${Math.max(8, cellSize * 0.4)}px rgba(0,0,0,0.4),
+                  0 0 20px rgba(100,116,139,0.3)
                 `,
                 left: stone[0] * cellSize + 2,
                 top: stone[1] * cellSize + 2,
                 opacity: isPaused ? 0.5 : 1,
                 transition: "opacity 0.3s",
                 zIndex: 1,
+                border: "1px solid rgba(255,255,255,0.05)",
               }}
             >
               <div
@@ -1395,10 +1491,32 @@ export default function SnakeGame() {
                   position: "absolute",
                   width: "30%",
                   height: "20%",
-                  background: "linear-gradient(135deg, rgba(255,255,255,0.1), transparent)",
+                  background: "linear-gradient(135deg, rgba(255,255,255,0.15), transparent)",
                   borderRadius: "50%",
                   top: "15%",
                   left: "20%",
+                }}
+              />
+              <div
+                style={{
+                  position: "absolute",
+                  width: "15%",
+                  height: "15%",
+                  background: "rgba(0,0,0,0.2)",
+                  borderRadius: "50%",
+                  bottom: "20%",
+                  right: "20%",
+                }}
+              />
+              <div
+                style={{
+                  position: "absolute",
+                  width: "8%",
+                  height: "8%",
+                  background: "rgba(255,255,255,0.08)",
+                  borderRadius: "50%",
+                  top: "40%",
+                  left: "60%",
                 }}
               />
             </div>
@@ -1536,6 +1654,8 @@ export default function SnakeGame() {
             <span>🔓 {unlockedLevels.length}/6</span>
             <span>•</span>
             <span>🏆 {achievements.length}</span>
+            <span>•</span>
+            <span>⚡ {getSpeedDisplay()}</span>
           </div>
         </div>
 
